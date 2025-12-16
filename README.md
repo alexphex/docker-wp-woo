@@ -7,7 +7,6 @@ Docker Stack for wp and woo
 Админка (Dashboard): http://localhost/wp-admin
 Adminer : localhost:8080
 
-Вот обновленная, «пуленепробиваемая» сборка для Linux Mint.
 
 =============================================================
 1. Файл .env
