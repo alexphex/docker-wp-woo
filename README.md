@@ -1,5 +1,5 @@
-# docker-wp-woo
-Docker Stack for wp and woo
+# docker-wp-woo 
+Docker Stack for wp and woo 
 
 При стандартной установке на локальной машине адреса будут такими:
 
@@ -13,7 +13,7 @@ Adminer : localhost:8080
 
 Bash
 
-# Твой ID пользователя в Linux (узнать можно командой `id -u`)
+# Твой ID пользователя (узнать можно командой `id -u`)
 USER_ID=1000
 GROUP_ID=1000
 
