@@ -7,35 +7,52 @@ Docker Stack for wp and woo
 Админка (Dashboard): http://localhost/wp-admin
 Adminer : localhost:8080
 
+Вот обновленная, «пуленепробиваемая» сборка для Linux Mint.
+
 =============================================================
 1. Файл .env
 Самое важное здесь — передать твои UID и GID, чтобы Docker не создавал файлы от имени root.
 
 Bash
 
-# Твой ID пользователя (узнать можно командой `id -u`)
+# Твой ID пользователя в Linux (узнать можно командой `id -u`)
+# Для каждого нового сайта просто меняй порты в файле .env, чтобы они не повторялись.
+# Пример для первого сайта:
 USER_ID=1000
 GROUP_ID=1000
-
-# База данных
 DB_NAME=wordpress
 DB_USER=wordpress
-DB_PASSWORD=wp_secure_pass
-DB_ROOT_PASSWORD=root_secure_pass
+DB_PASSWORD=secret
+DB_ROOT_PASSWORD=root_secret
+
+HOST_PORT=80
+ADMINER_PORT=8080
+
+
+# Пример для второго сайта:
+# USER_ID=1000
+# GROUP_ID=1000
+# DB_NAME=wordpress
+# DB_USER=wordpress
+# DB_PASSWORD=secret
+# DB_ROOT_PASSWORD=root_secret
+
+# HOST_PORT=8081
+# ADMINER_PORT=8082
+# Один на http://localhost, другой на http://localhost:8081
+
 
 =============================================================
 2. Файл docker-compose.yml
-плюс сервис wp-cli. Он использует тот же том (volume) с файлами, что и основной WordPress.
+Я добавил сервис wp-cli. Он использует тот же том (volume) с файлами, что и основной WordPress.
 
 YAML
 
 version: '3.8'
 
 services:
-  # База данных
   db:
     image: mariadb:10.6
-    container_name: wp_db
     restart: always
     environment:
       MYSQL_DATABASE: ${DB_NAME}
@@ -43,14 +60,13 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes:
-      - db_data:/var/lib/mysql
+      # Заменили именованный том на локальную папку проекта
+      - ./db_data:/var/lib/mysql
 
-  # WordPress (Apache + PHP)
   wordpress:
     image: wordpress:latest
-    container_name: wp_app
     restart: always
-    user: "${USER_ID}:${GROUP_ID}" # Работает от ТВОЕГО имени
+    user: "${USER_ID}:${GROUP_ID}"
     depends_on:
       - db
     environment:
@@ -58,16 +74,13 @@ services:
       WORDPRESS_DB_USER: ${DB_USER}
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
       WORDPRESS_DB_NAME: ${DB_NAME}
-      # Важно: разрешаем прямую запись файлов
       WORDPRESS_CONFIG_EXTRA: |
         define('FS_METHOD', 'direct');
     volumes:
       - ./wp-content:/var/www/html/wp-content
 
-  # WP-CLI (Инструмент командной строки)
   wp-cli:
     image: wordpress:cli
-    container_name: wp_cli
     user: "${USER_ID}:${GROUP_ID}"
     volumes:
       - ./wp-content:/var/www/html/wp-content
@@ -78,29 +91,25 @@ services:
       WORDPRESS_DB_NAME: ${DB_NAME}
     depends_on:
       - db
-      - wordpress
 
-  # Nginx (Прокси)
   nginx:
     image: nginx:alpine
-    container_name: wp_nginx
+    restart: always
     ports:
-      - "80:80"
+      # Теперь порт берется из .env
+      - "${HOST_PORT}:80"
     volumes:
       - ./wp-content:/var/www/html/wp-content
       - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - wordpress
 
-  # Adminer (Управление БД)
   adminer:
     image: adminer
-    container_name: wp_adminer
+    restart: always
     ports:
-      - "8080:8080"
-
-volumes:
-  db_data:
+      # Теперь порт берется из .env
+      - "${ADMINER_PORT}:8080"
 
 =============================================================
 3. Файл config/nginx.conf
@@ -130,7 +139,7 @@ server {
 Bash
 
 # Даем права твоему пользователю на текущую папку
-sudo chown -R $USER:$USER .  (!! ТОЧКА в конце ОБЯЗАТЕЛЬНА)
+sudo chown -R $USER:$USER .   (!! ТОЧКА в конце ОБЯЗАТЕЛЬНА)
 # Создаем папку для контента, если её нет
 mkdir -p wp-content config
 
@@ -140,7 +149,7 @@ Bash
 docker compose up -d
 
 Шаг 3: Как использовать WP-CLI
-Теперь ты можешь выполнять команды WP-CLI без установки. Например:
+Теперь ты можешь выполнять команды WP-CLI без установки его на Linux Mint. Например:
 
 Проверить состояние: docker-compose run --rm wp-cli core version
 
@@ -148,8 +157,9 @@ docker compose up -d
 
 Обновить всё: docker-compose run --rm wp-cli core update
 
+Почему это решает твои проблемы:
 Права: Благодаря user: "${USER_ID}:${GROUP_ID}", любой файл, созданный внутри контейнера (плагин, картинка, обновление), будет принадлежать тебе. Ты сможешь редактировать их в VS Code или Sublime без sudo.
 
-Легкость: используем стандартные образы.
+Легкость: Мы используем стандартные образы.
 
 Adminer: Просто зайди на localhost:8080, чтобы быстро поправить что-то в базе.
