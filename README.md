@@ -8,8 +8,8 @@
 Bash
 
 # Твой ID пользователя в Linux (узнай командой `id -u` и `id -g`)
-USER_ID=1000
-GROUP_ID=1000
+USER_ID='твой id'
+GROUP_ID='твой id'
 
 # Настройки базы данных
 DB_NAME=wordpress
