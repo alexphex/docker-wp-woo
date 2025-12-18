@@ -8,8 +8,8 @@
 Bash
 
 # Твой ID пользователя в Linux (узнай командой `id -u` и `id -g`)
-USER_ID='твой id'
-GROUP_ID='твой id'
+USER_ID='ставь твой id'
+GROUP_ID='ставь твой id'
 
 # Настройки базы данных
 DB_NAME=wordpress
@@ -20,6 +20,7 @@ DB_ROOT_PASSWORD=root_secret
 # Порты (для второго сайта смени, например, на 8081 и 8082)
 HOST_PORT=80
 ADMINER_PORT=8080
+
 2. Конфигурация Docker (docker-compose.yml)
 Создай файл docker-compose.yml. Обрати внимание: мы монтируем всю папку html, чтобы ты видел ядро WordPress.
 
@@ -40,7 +41,7 @@ services:
       - ./db_data:/var/lib/mysql
 
   wordpress:
-    image: wordpress:latest
+    image: wordpress:fpm
     restart: always
     user: "${USER_ID}:${GROUP_ID}"
     depends_on:
@@ -84,6 +85,8 @@ services:
     restart: always
     ports:
       - "${ADMINER_PORT}:8080"
+
+
 3. Конфигурация Nginx (config/nginx.conf)
 Создай папку config и в ней файл nginx.conf. Этот конфиг правильно передает запросы к WordPress.
 
@@ -97,19 +100,28 @@ server {
     index index.php;
 
     location / {
-        proxy_pass http://wordpress:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        try_files $uri $uri/ /index.php?$args;
     }
 
-    # Оптимизация: Nginx сам отдает статику, не нагружая WordPress
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        # 'wordpress' — это имя сервиса из docker-compose
+        fastcgi_pass wordpress:9000; 
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
         expires max;
         log_not_found off;
     }
 }
+
+
+
 🛠 Как пользоваться (Быстрый старт)
 Шаг 1: Подготовка папок
 В терминале внутри папки проекта выполни:
@@ -155,5 +167,3 @@ ADMINER_PORT=8082
 (Опционально) названия БД.
 
 Запусти docker compose up -d. Теперь первый сайт на порту 80, а второй — на 8081.
-!! может быть ошибка на Втором сайте когда запускаеш его
-!! убедись что запуск идет через http://localhost:8081/wp-admin/install.php
